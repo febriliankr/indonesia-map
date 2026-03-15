@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peta Indonesia Interaktif</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #fafafa;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      overflow: hidden;
+    }
+
+    header {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-weight: 500;
+      font-size: 1rem;
+      color: #333;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 span {
+      font-weight: 400;
+      font-size: 0.7em;
+      display: block;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 95vw;
+      max-width: 1400px;
+    }
+
+    .map-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+    }
+
+    #map-svg {
+      width: 100%;
+      height: auto;
+    }
+
+    #features path {
+      fill: #d0d0d0;
+      stroke: #fafafa;
+      stroke-width: 0.5;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      cursor: pointer;
+      transition: fill 0.2s ease;
+    }
+
+    #features path:hover,
+    #features path.hovered {
+      fill: #e85d3a;
+    }
+
+    /* Legend */
+    .legend {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      padding: 0;
+      border-top: 1px solid #eee;
+      padding-top: 12px;
+    }
+
+    .legend-title {
+      width: 100%;
+      font-size: 0.6rem;
+      font-weight: 500;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0 4px 6px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: background 0.15s ease;
+    }
+
+    .legend-item:hover,
+    .legend-item.active {
+      background: #f0f0f0;
+    }
+
+    .legend-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 1px;
+      background: #d0d0d0;
+      flex-shrink: 0;
+      transition: background 0.2s ease;
+    }
+
+    .legend-item:hover .legend-dot,
+    .legend-item.active .legend-dot {
+      background: #e85d3a;
+    }
+
+    .legend-label {
+      font-size: 0.6rem;
+      color: #888;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .legend-item:hover .legend-label,
+    .legend-item.active .legend-label {
+      color: #222;
+    }
+
+    /* Tooltip */
+    #tooltip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 100;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 6px 12px;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    #tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #tooltip .name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #222;
+      white-space: nowrap;
+    }
+
+    #tooltip .province-id {
+      font-size: 0.65rem;
+      color: #aaa;
+      margin-top: 1px;
+    }
+
+    .attribution {
+      position: fixed;
+      bottom: 12px;
+      left: 16px;
+      font-size: 0.6rem;
+      color: #bbb;
+      z-index: 2;
+    }
+
+    .attribution a { color: #999; text-decoration: none; }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 0.85rem; }
+      .main { width: 100vw; }
+      .legend-label { font-size: 0.55rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>
+    Republik Indonesia
+    <span>34 Provinsi</span>
+  </h1>
+</header>
+
+<div class="main">
+  <div class="map-container" id="map-container"></div>
+  <div class="legend" id="legend">
+    <div class="legend-title">Provinsi</div>
+  </div>
+</div>
+
+<div id="tooltip">
+  <div class="name" id="tooltip-name"></div>
+  <div class="province-id" id="tooltip-id"></div>
+</div>
+
+<div class="attribution">
+  &copy; <a href="https://simplemaps.com" target="_blank" rel="noopener">SimpleMaps</a>
+</div>
+
+<script>
+  const tooltip = document.getElementById('tooltip');
+  const tooltipName = document.getElementById('tooltip-name');
+  const tooltipId = document.getElementById('tooltip-id');
+  const legend = document.getElementById('legend');
+
+  function highlightProvince(svgEl, id) {
+    svgEl.querySelectorAll('#features path.hovered').forEach(p => p.classList.remove('hovered'));
+    document.querySelectorAll('.legend-item.active').forEach(el => el.classList.remove('active'));
+
+    if (id) {
+      svgEl.querySelectorAll(`#features path[id="${id}"]`).forEach(p => p.classList.add('hovered'));
+      const legendItem = document.querySelector(`.legend-item[data-id="${id}"]`);
+      if (legendItem) legendItem.classList.add('active');
+    }
+  }
+
+  function clearHighlight(svgEl) {
+    svgEl.querySelectorAll('#features path.hovered').forEach(p => p.classList.remove('hovered'));
+    document.querySelectorAll('.legend-item.active').forEach(el => el.classList.remove('active'));
+  }
+
+  fetch('assets/id.svg')
+    .then(r => r.text())
+    .then(svgText => {
+      const container = document.getElementById('map-container');
+      container.innerHTML = svgText;
+
+      const svgEl = container.querySelector('svg');
+      svgEl.id = 'map-svg';
+      svgEl.removeAttribute('fill');
+      svgEl.removeAttribute('stroke');
+      svgEl.removeAttribute('stroke-width');
+      svgEl.removeAttribute('stroke-linecap');
+      svgEl.removeAttribute('stroke-linejoin');
+      svgEl.removeAttribute('width');
+      svgEl.removeAttribute('height');
+      svgEl.setAttribute('viewBox', '0 0 1000 368');
+
+      svgEl.querySelector('#points')?.remove();
+      svgEl.querySelector('#label_points')?.remove();
+
+      // Collect unique provinces
+      const provinces = new Map();
+      svgEl.querySelectorAll('#features path').forEach(path => {
+        const id = path.getAttribute('id');
+        const name = path.getAttribute('name');
+        if (id && name && !provinces.has(id)) {
+          provinces.set(id, name);
+        }
+      });
+
+      // Sort provinces alphabetically by name
+      const sorted = [...provinces.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+
+      // Build legend
+      sorted.forEach(([id, name]) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.dataset.id = id;
+        item.innerHTML = `<div class="legend-dot"></div><div class="legend-label" title="${name}">${name}</div>`;
+
+        item.addEventListener('mouseenter', () => {
+          highlightProvince(svgEl, id);
+          tooltipName.textContent = name;
+          tooltipId.textContent = id;
+          tooltip.classList.add('visible');
+
+          // Position tooltip near the province on the map
+          const paths = svgEl.querySelectorAll(`#features path[id="${id}"]`);
+          if (paths.length) {
+            const bbox = paths[0].getBoundingClientRect();
+            const x = bbox.left + bbox.width / 2;
+            const y = bbox.top + bbox.height / 2;
+            const tRect = tooltip.getBoundingClientRect();
+            tooltip.style.left = Math.min(Math.max(x - tRect.width / 2, 8), window.innerWidth - tRect.width - 8) + 'px';
+            tooltip.style.top = Math.max(y - tRect.height - 8, 8) + 'px';
+          }
+        });
+
+        item.addEventListener('mouseleave', () => {
+          clearHighlight(svgEl);
+          tooltip.classList.remove('visible');
+        });
+
+        legend.appendChild(item);
+      });
+
+      // Map path interactions
+      const paths = svgEl.querySelectorAll('#features path');
+
+      paths.forEach(path => {
+        const name = path.getAttribute('name');
+        const id = path.getAttribute('id');
+
+        path.addEventListener('mouseenter', () => {
+          tooltipName.textContent = name || '';
+          tooltipId.textContent = id || '';
+          tooltip.classList.add('visible');
+          highlightProvince(svgEl, id);
+        });
+
+        path.addEventListener('mousemove', (e) => {
+          const rect = tooltip.getBoundingClientRect();
+          tooltip.style.left = Math.min(e.clientX + 16, window.innerWidth - rect.width - 20) + 'px';
+          tooltip.style.top = Math.min(e.clientY - 10, window.innerHeight - rect.height - 20) + 'px';
+        });
+
+        path.addEventListener('mouseleave', () => {
+          tooltip.classList.remove('visible');
+          clearHighlight(svgEl);
+        });
+      });
+    });
+</script>
+
+</body>
+</html>
