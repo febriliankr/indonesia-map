@@ -1,0 +1,52 @@
+{
+  "name": "indonesia-map",
+  "version": "0.1.1",
+  "description": "Interactive Indonesia SVG map with 34 provinces — React component",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./svg": "./dist/id.svg"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "prebuild": "npx tsx scripts/embed-svg.ts",
+    "build": "tsup",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "indonesia",
+    "map",
+    "svg",
+    "provinces",
+    "react",
+    "interactive"
+  ],
+  "author": "febriliankr",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/febriliankr/indonesia-map"
+  },
+  "homepage": "https://github.com/febriliankr/indonesia-map",
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0"
+  }
+}
