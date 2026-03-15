@@ -18,6 +18,10 @@ Open `http://localhost:8080`.
 
 SVG map data from [simplemaps.com/gis/country/id](https://simplemaps.com/gis/country/id) (free for commercial use with attribution).
 
+## using with react
+
+See [docs/react.md](docs/react.md) for a guide on integrating this into a React app.
+
 ## stack
 
 - vanilla html/css/js
